@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -53,41 +55,71 @@ import com.echat.echat.feature.auth.singup.SignUpViewModel
 fun SignUpScreen( navController: NavController) {
     // UI for the sign-in screen
 
-    var viewModel = viewModel<SignUpViewModel>()
+    var viewModel = hiltViewModel<SignUpViewModel>()
     val uiState = viewModel.state.collectAsState()
 
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("")}
-    var confirmPassword by remember { mutableStateOf("")}
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
-    Scaffold(modifier = Modifier.fillMaxSize()){
+    LaunchedEffect(uiState.value) {
+        when (uiState.value) {
+            is SignUpState.Success -> {
+                Toast.makeText(context, "User created successfully!", Toast.LENGTH_SHORT).show()
+                navController.navigate("home_screen") {
+                    // Clear the backstack
+                    popUpTo("signup_screen") {
+                        inclusive = true
+                    }
+                }
+            }
+
+            is SignUpState.Error -> {
+                Toast.makeText(
+                    context,
+                    (uiState.value as SignUpState.Error).message,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            else -> {}
+        }
+
+    }
+
+    Scaffold(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(it)
                 .padding(16.dp),
-                //.verticalScroll(rememberScrollState()),
+            //.verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
 
-        ) {
+            ) {
 
-            Image(painter = painterResource(id = R.drawable.echat_logo_test),
+            Image(
+                painter = painterResource(id = R.drawable.echat_logo_test),
                 contentDescription = null,
                 modifier = Modifier
                     .size(100.dp)
                     .padding(8.dp)
             )
             Row {
-                Text(text = stringResource(id = R.string.app_name),
+                Text(
+                    text = stringResource(id = R.string.app_name),
                     fontStyle = FontStyle.Italic
                 )
 
-                Text(text = stringResource(id = R.string.app_slogan),
-                    fontStyle = FontStyle.Italic)
+                Text(
+                    text = stringResource(id = R.string.app_slogan),
+                    fontStyle = FontStyle.Italic
+                )
             }
             OutlinedTextField(
                 modifier = Modifier
@@ -131,33 +163,24 @@ fun SignUpScreen( navController: NavController) {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { viewModel.signUp(name, email, password) },
-                enabled = name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty() && password == confirmPassword
+            if (uiState.value == SignUpState.Loading) {
+                CircularProgressIndicator()
+            } else {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { viewModel.signUp(name, email, password) },
+                    enabled = name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty() && password == confirmPassword
 
-            ) {
-                Text(text = stringResource(R.string.sign_up))
-            }
-            TextButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.popBackStack() }
-            ) {
-                Text(text = stringResource(R.string.already_have_account))
-            }
+                ) {
+                    Text(text = stringResource(R.string.sign_up))
+                }
+                TextButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { navController.popBackStack() }
+                ) {
+                    Text(text = stringResource(R.string.already_have_account))
+                }
 
-            when(uiState.value){
-                is SignUpState.Loading -> {
-                    // Show loading indicator
-                    CircularProgressIndicator()
-                }
-                is SignUpState.Success -> {
-                    Toast.makeText(LocalContext.current, "User created successfully!", Toast.LENGTH_SHORT).show()
-                }
-                is SignUpState.Error -> {
-                    Toast.makeText(LocalContext.current, (uiState.value as SignUpState.Error).message, Toast.LENGTH_SHORT).show()
-                }
-                else -> {}
             }
         }
     }
